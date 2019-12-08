@@ -15,6 +15,9 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
+#include "io_context.hpp"
+#include <iostream>
+
 namespace cppnet {
 namespace socket{
 class Tcp{};
@@ -22,20 +25,63 @@ class Udp{};
 
 template<typename Protocol>
 class SocketConfig{
-    
+    async::SocketContext *ctx_;
 public:
     using NativeHandleType=int;
-    SocketConfig(int fd):fd_(fd){
+    SocketConfig(async::SocketContext&ctx,NativeHandleType fd):fd_(fd),ctx_(&ctx){
+        ctx_->FdCountInc(fd);
+    }
+    SocketConfig(async::SocketContext&ctx):ctx_(&ctx),fd_(-1){
         
     }
-    SocketConfig():fd_(-1){
+    SocketConfig(const SocketConfig &sock){
+        this->ctx_=sock.ctx_;
+        
+        SetNativeHandle(sock.fd_);
     }
+    SocketConfig& operator=(const SocketConfig&sock){
+        this->ctx_=sock.ctx_;
+        SetNativeHandle(sock.fd_);
+        return *this;
+    }
+    ~SocketConfig(){
+        if(ctx_->FdCountDec(fd_)){
+            std::cout<<fd_<<" close"<<std::endl;
+            close(fd_);
+        }
+    }
+    
     void SetNativeHandle(NativeHandleType fd){
+        if(fd<0){
+            return ;
+        }
         fd_=fd;
+        ctx_->FdCountInc(fd_);
     }
-    NativeHandleType NativeHandle(){
+    NativeHandleType NativeHandle()const{
         return fd_;
     }
+    async::SocketContext& GetContext()const {
+        return *ctx_;
+    }
+    
+    
+    
+    void SetCountClose(bool val){
+        ctx_->FdData(fd_).count_close=val;
+    }
+    
+    void SetSocketContext(async::SocketContext &ctx){
+        ctx_=&ctx;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
     // 通用套接字选项
 
     void Broadcast(bool);
