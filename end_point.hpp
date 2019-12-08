@@ -64,6 +64,7 @@ class EndPoint{
     sockaddr_in sock_;
 public:
     using SockAddrType=sockaddr_in;
+    using SockAddrSizeType=socklen_t;
     EndPoint(const IPAddress &ipa,short port){
         cppnet::utils::StringUtils::BZero(sock_);
         sock_.sin_family=AF_INET;
@@ -76,7 +77,9 @@ public:
     SockAddrType GetSockAddr()const {
         return sock_;
     }
-    
+    void SetSockAddr(const SockAddrType &addr){
+        sock_=addr;
+    }
     
     operator std::string()const { 
         std::string res;

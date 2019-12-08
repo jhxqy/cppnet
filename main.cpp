@@ -13,6 +13,7 @@
 #include <memory>
 #include <utility>
 #include "stream_socket.hpp"
+#include "dgram_socket.hpp"
 using namespace std;
 using namespace cppnet;
 class session
@@ -119,21 +120,50 @@ public:
 };
 
 
-
+class UdpServer{
+    socket::UdpSocket sock;
+    ssize_t waitSend;
+    char buf[1024];
+    void R(){
+        sock.AsyncReceiveFrom(buffer::MutableBuffer(buf,1024), [this](ssize_t s,address::EndPoint e,error::IOError ec){
+            if (ec) {
+                cout<<ec.what()<<endl;
+            }else{
+                buf[s]=0;
+                waitSend=s;
+                cout<<buf;
+                W(e);
+                R();
+            }
+        });
+    }
+    void W(address::EndPoint ep){
+        sock.AsyncSendTo(buffer::MutableBuffer(buf,waitSend),ep,[this](ssize_t s,error::IOError ec){
+        });
+    }
+public:
+    UdpServer(async::SocketContext &ctx):sock(ctx){
+        sock.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080));
+        R();
+    }
+};
 
 int main(int argc, char* argv[])
 {
-try{
-
-    async::SocketContext io_context;
-    server s(io_context,8080);
-    ExitService e(io_context,fileno(stdin));
-    io_context.Run();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "Exception: " << e.what() << "\n";
-  }
+//try{
+//
+//    async::SocketContext io_context;
+//    server s(io_context,8080);
+//    ExitService e(io_context,fileno(stdin));
+//    io_context.Run();
+//  }
+//  catch (std::exception& e)
+//  {
+//    std::cerr << "Exception: " << e.what() << "\n";
+//  }
+    async::SocketContext ctx;
+    UdpServer us(ctx);
+    ctx.Run();
 
   return 0;
 }

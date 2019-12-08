@@ -22,6 +22,7 @@ namespace socket{
 class StreamSocket:public SocketConfig<Tcp>{
 public:
     StreamSocket(async::SocketContext &ctx):SocketConfig<Tcp>(ctx){}
+    
     template<typename Buffer>
     ssize_t ReadSome(const Buffer&);
     template<typename Buffer>
@@ -92,7 +93,7 @@ public:
     }
     void Bind(const address::EndPoint &ep){
         address::EndPoint::SockAddrType val=ep.GetSockAddr();
-        if(bind(SocketConfig<Tcp>::NativeHandle(),(sockaddr*)(&val),sizeof(val))==0){
+        if(bind(NativeHandle(),(sockaddr*)(&val),sizeof(val))==0){
         }else{
             throw exception::BindException(strerror(errno));
         }
@@ -128,13 +129,11 @@ public:
             error::IOError ioe;
             if(client<0){
                 ioe.SetValue(true);
-                ioe.SetMessage("accept error");
+                ioe.SetMessage(strerror(errno));
             }
             handler(TcpSocket(this->GetContext(), client),ioe);
         }));
     }
-    
-
     ~TcpSocket(){
         
         

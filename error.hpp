@@ -13,6 +13,7 @@
 #include <string>
 #include <stdexcept>
 #include <stdio.h>
+#include <cerrno>
 #define createException(name,base) class name##Exception:public base {\
 public:\
     name##Exception(const std::string &message):base(message){\
