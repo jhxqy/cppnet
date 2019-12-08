@@ -8,6 +8,7 @@
 
 #ifndef io_context_hpp
 #define io_context_hpp
+#include <unistd.h>
 
 #include <stdio.h>
 #include "Event.hpp"
@@ -46,6 +47,14 @@ public:
     bool FdCountClear(int fd){
         fd_count_[fd]=0;
         return true;
+    }
+    
+    ~SocketContext(){
+        for(auto i:fd_count_){
+            if(i.second!=0){
+                close(i.first);
+            }
+        }
     }
 };
 }

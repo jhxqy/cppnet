@@ -16,7 +16,6 @@
 #include "error.hpp"
 #include <iostream>
 #include <sys/socket.h>
-
 #include "end_point.hpp"
 namespace cppnet{
 namespace socket{
@@ -63,10 +62,13 @@ template<typename Buffer,typename ReadHandler>
 void StreamSocket<HandleType>::AsyncReadSome(const Buffer &buf, ReadHandler &&handle){
     ctx_->AddEvent(new async::EventBase(ctx_->GetHandle(this), async::EventBaseType::read,[buf,handle](int fd){
         ssize_t len=read(fd,buf.Data(), buf.Size());
-        if(len<0){
+        error::IOError ioe;
+        if(len<=0){
             len=0;
+            ioe.SetMessage("读取失败！");
+            ioe.SetValue(true);
         }
-        handle(static_cast<size_t>(len));
+        handle(static_cast<size_t>(len),ioe);
     }));
 }
 
@@ -78,11 +80,14 @@ template<typename Buffer,typename WriteHandler>
 void StreamSocket<HandleType>::AsyncWriteSome(const Buffer &buf, WriteHandler &&handle){
     ctx_->AddEvent(new async::EventBase(ctx_->GetHandle(this), async::EventBaseType::write,[buf,handle](int fd){
         ssize_t len=write(fd,buf.Data(), buf.Size());
-        if(len<0){
-            throw std::runtime_error("error!!!!");
+        error::IOError ioe;
+
+        if(len<=0){
+            ioe.SetMessage("写入失败！");
+            ioe.SetValue(true);
             len=0;
         }
-        handle(static_cast<size_t>(len));
+        handle(static_cast<size_t>(len),ioe);
     }));
 }
 
@@ -94,13 +99,16 @@ public:
     TcpSocket& operator=(const TcpSocket &s){
         this->SetSocketContext(s.GetContext());
         auto handle=GetContext().GetHandle((void*)(&s));
+        if(GetContext().TestFdCount(GetContext().GetHandle(this))){
+            GetContext().FdCountInc(GetContext().GetHandle(this));
+        }
+
         SocketConfig<Tcp>::SetNativeHandle(handle);
         GetContext().Register(this, handle);
         GetContext().FdCountInc(handle);
         return *this;
 
     }
-    
     TcpSocket(const TcpSocket&s):StreamSocket<int>(s.GetContext()){
         SocketConfig<Tcp>::NativeHandleType fd=s.GetContext().GetHandle((void*)(&s));
         SocketConfig<Tcp>::SetNativeHandle(fd);
@@ -148,12 +156,27 @@ public:
         }
         return TcpSocket(StreamSocket<int>::GetContext(),newfd);
     }
+    template<typename AcceptHandler>
+    void AsyncAccept(AcceptHandler handler){
+        GetContext().AddEvent(new async::EventBase(StreamSocket<int>::GetContext().GetHandle(this), async::EventBaseType::read, [this,handler](int fd){
+            SocketConfig<Tcp>::NativeHandleType client=accept(fd, nullptr, nullptr);
+            error::IOError ioe;
+            if(client<0){
+                ioe.SetValue(true);
+                ioe.SetMessage("accept error");
+            }
+            handler(TcpSocket(this->GetContext(), client),ioe);
+        }));
+    }
+    
+    
+    
     void Close(){
         auto fd=GetContext().GetHandle(this);
         if(GetContext().TestFdCount(fd)){
             GetContext().FdCountClear(fd);
             close(GetContext().GetHandle(this));
-            std::cout<<"结束了"<<std::endl;
+            std::cout<<"结束了:"<<fd<<std::endl;
         }
        
         
@@ -163,7 +186,7 @@ public:
         if(GetContext().TestFdCount(fd)){
             if(GetContext().FdCountDec(GetContext().GetHandle(this))){
                 close(GetContext().GetHandle(this));
-                std::cout<<"结束了"<<std::endl;
+                std::cout<<"结束了:"<<fd<<std::endl;
             }
         }
         

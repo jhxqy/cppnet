@@ -1,70 +1,139 @@
 //
-//  main.cpp
-//  cppnet
+// async_tcp_echo_server.cpp
+// ~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-//  Created by 贾皓翔 on 2019/12/3.
-//  Copyright © 2019 贾皓翔. All rights reserved.
+// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <utility>
 #include "stream_socket.hpp"
 using namespace std;
 using namespace cppnet;
+class session
+  : public std::enable_shared_from_this<session>
+{
+public:
+  session(socket::TcpSocket socket)
+    : socket_(socket)
+  {
+  }
+
+  void start()
+  {
+    do_read();
+  }
+
+private:
+  void do_read()
+  {
+    auto self(shared_from_this());
+    socket_.AsyncReadSome(buffer::MutableBuffer(data_, max_length),
+        [this, self](std::size_t length, error::IOError ec)
+        {
+          if (!ec)
+          {
+            
+            do_write(length);
+          }else{
+              cout<<"close"<<endl;
+          }
+        });
+  }
+
+  void do_write(std::size_t length)
+  {
+    auto self(shared_from_this());
+    socket_.AsyncWriteSome(buffer::MutableBuffer(data_, length),
+        [this, self](std::size_t /*length*/, error::IOError ec)
+        {
+          if (!ec)
+          {
+            do_read();
+          }
+        });
+  }
+
+  socket::TcpSocket socket_;
+  enum { max_length = 1024 };
+  char data_[max_length];
+};
+
+class server
+{
+public:
+  server(async::SocketContext& io_context, short port)
+    : acceptor_(io_context)
+  {
+      acceptor_.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),port));
+      acceptor_.Listen(5);
+    do_accept();
+  }
+
+private:
+  void do_accept()
+  {
+    acceptor_.AsyncAccept(
+        [this](socket::TcpSocket socket,error::IOError ec)
+        {
+          if (!ec)
+          {
+            std::make_shared<session>(socket)->start();
+          }
+
+          do_accept();
+        });
+  }
+
+  socket::TcpSocket acceptor_;
+};
 
 char buf[1024];
 
-void f(size_t size){
-    if(size==0){
-        cout<<"error!"<<endl;
-        return ;
+class ExitService{
+    socket::TcpSocket socket_;
+    char buff[1024];
+    void WaitExit(){
+        socket_.AsyncReadSome(buffer::MutableBuffer(buff,1024),[this](size_t size,error::IOError e){
+            buff[size]=0;
+            if (strcmp(buff, "exit\n")==0) {
+                exit(0);
+            }else{
+                cout<<buff;
+                cout<<"命令不存在！"<<endl;
+                WaitExit();
+            }
+        });
+        
     }
-    cout<<string(buf,size);
-}
-async::IoContext c;
-
-void ReadF(int fd){
-    char buf[1024];
-    ssize_t n=read(fd, buf, 1024);
-    buf[n]=0;
-    cout<<"异步读入"<<buf;
-
-
-}
-class A{
-    int a,b;
 public:
-    void* AThis(){
-        return this;
+    ExitService(async:: SocketContext &ctx,int fd):socket_(ctx,fd){
+        WaitExit();
     }
-};
-
-class B{
-    int a,b;
-public:
-    void* BThis(){
-        return this;
-    }
-};
-class C:public A,public B{
-    int a,b;
-public:
-    void* CThis(){
-        return this;
-    }
+    
 };
 
 
-int main(int argc, const char * argv[]) {
-    cppnet::async::SocketContext ctx;
-    socket::TcpSocket tcp(ctx);
-    tcp.ReUsePort(true);
-    tcp.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080));
-    tcp.Listen(1);
-    while (1) {
-        auto client=tcp.Accept();
-        auto s=client.WriteSome(buffer::Buffer("helloworld"));
-        auto b=client;
-        b.Close();
-    }
-    return 0;
+
+
+int main(int argc, char* argv[])
+{
+try{
+
+    async::SocketContext io_context;
+    server s(io_context,8080);
+    ExitService e(io_context,fileno(stdin));
+    io_context.Run();
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "Exception: " << e.what() << "\n";
+  }
+
+  return 0;
 }
