@@ -28,7 +28,9 @@ public:
     }
     template<typename Buffer>
     ssize_t SendTo(const Buffer &buf,const address::EndPoint &ep ){
-        return ::sendto(NativeHandle(), buf.Data(), buf.Size(), 0, ep.GetSockAddr(), sizeof(ep.GetSockAddr()));
+        address::EndPoint::SockAddrType  epa=ep.GetSockAddr();
+        address::EndPoint::SockAddrSizeType  esize= sizeof(epa);
+        return ::sendto(NativeHandle(), buf.Data(), buf.Size(), 0, (sockaddr*)&epa, esize);
     }
     template<typename Buffer>
     ssize_t ReceiveFrom(const Buffer &buf,address::EndPoint &ep){
@@ -41,10 +43,12 @@ public:
     template<typename Buffer,typename Handler>
     void AsyncSendTo(const Buffer &buf,const address::EndPoint &ep ,Handler func){
         auto fd=NativeHandle();
+        std::cout<<"wait to send to "<<std::string(ep)<<std::endl;
         GetContext().AddEvent(new async::EventBase(NativeHandle(), async::EventBaseType::write, [fd,buf,func,ep](int){
             error::IOError ec;
             address::EndPoint::SockAddrType sock=ep.GetSockAddr();
-            ssize_t sendto_result=::sendto(fd, buf.Data(), buf.Size(), 0, (sockaddr*)&sock, sizeof(sock));
+            address::EndPoint::SockAddrSizeType socksize= sizeof(sock);
+            ssize_t sendto_result=::sendto(fd, buf.Data(), buf.Size(), 0, (sockaddr*)&sock,socksize);
             if(sendto_result<=0){
                 ec.SetValue(true);
                 ec.SetMessage(strerror(errno));
@@ -53,9 +57,9 @@ public:
         }));
     }
     template<typename Buffer,typename Handler>
-    void AsyncReceiveFrom(const Buffer &buf,Handler func){
+    void AsyncReceiveFrom(const Buffer &buf,address::EndPoint &ep,Handler func){
         auto fd=NativeHandle();
-        GetContext().AddEvent(new async::EventBase(NativeHandle(),async::EventBaseType::read,[fd,buf,func](int){
+        GetContext().AddEvent(new async::EventBase(NativeHandle(),async::EventBaseType::read,[&ep,fd,buf,func](int){
             error::IOError ec;
             address::EndPoint::SockAddrType addr;
             address::EndPoint::SockAddrSizeType alen=sizeof(addr);
@@ -65,9 +69,8 @@ public:
                 ec.SetValue(true);
                 ec.SetMessage(strerror(errno));
             }
-            address::EndPoint ep;
             ep.SetSockAddr(addr);
-            func(recvfrom_result,ep,ec);
+            func(recvfrom_result,ec);
         }));
     }
     
@@ -100,3 +103,4 @@ public:
 
 }
 #endif /* dgram_socket_hpp */
+

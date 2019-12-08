@@ -118,40 +118,56 @@ public:
     }
     
 };
-
-
-class UdpServer{
-    socket::UdpSocket sock;
-    ssize_t waitSend;
-    char buf[1024];
-    void R(){
-        sock.AsyncReceiveFrom(buffer::MutableBuffer(buf,1024), [this](ssize_t s,address::EndPoint e,error::IOError ec){
-            if (ec) {
-                cout<<ec.what()<<endl;
-            }else{
-                buf[s]=0;
-                waitSend=s;
-                cout<<buf;
-                W(e);
-                R();
-            }
-        });
-    }
-    void W(address::EndPoint ep){
-        sock.AsyncSendTo(buffer::MutableBuffer(buf,waitSend),ep,[this](ssize_t s,error::IOError ec){
-        });
-    }
+class UdpServer
+{
 public:
-    UdpServer(async::SocketContext &ctx):sock(ctx){
-        sock.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080));
-        R();
+    UdpServer(async::SocketContext & io_context, short port)
+            : socket_(io_context)
+    {
+        socket_.Bind(address::EndPoint(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080)));
+        do_receive();
     }
+
+    void do_receive()
+    {
+        socket_.AsyncReceiveFrom(
+                buffer::MutableBuffer(data_, max_length), sender_endpoint_,
+                [this](ssize_t bytes_recvd,error::IOError ec)
+                {
+                    if (!ec && bytes_recvd > 0)
+                    {
+                        do_send(bytes_recvd);
+                    }
+                    else
+                    {
+                        do_receive();
+                    }
+                });
+    }
+
+    void do_send(std::size_t length)
+    {
+        socket_.AsyncSendTo(
+                buffer::MutableBuffer(data_, length), sender_endpoint_,
+                [this](ssize_t bytes_recvd,error::IOError ec /*bytes_sent*/)
+                {
+                    do_receive();
+                });
+    }
+
+private:
+    socket::UdpSocket socket_;
+    address::EndPoint sender_endpoint_;
+    enum { max_length = 1024 };
+    char data_[max_length];
 };
+
+
 
 int main(int argc, char* argv[])
 {
 //try{
-//
+
 //    async::SocketContext io_context;
 //    server s(io_context,8080);
 //    ExitService e(io_context,fileno(stdin));
@@ -161,9 +177,30 @@ int main(int argc, char* argv[])
 //  {
 //    std::cerr << "Exception: " << e.what() << "\n";
 //  }
-    async::SocketContext ctx;
-    UdpServer us(ctx);
-    ctx.Run();
+   // async::SocketContext ctx;
+   // UdpServer us(ctx);
+  //  ctx.Run();
+//    async::SocketContext ctx;
+//    socket::UdpSocket socket(ctx);
+//    socket.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080));
+//    char buf[1024];
+//    ctx.Run();
+    try
+    {
+
+        async::SocketContext io_context;
+
+        UdpServer s(io_context,8080);
+
+        io_context.Run();
+    }
+    catch (std::exception& e)
+    {
+        std::cerr << "Exception: " << e.what() << "\n";
+    }
+
+    return 0;
 
   return 0;
 }
+
