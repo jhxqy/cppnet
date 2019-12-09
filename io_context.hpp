@@ -28,7 +28,7 @@ public:
         fd_count_[fd].count=fd_count_[fd].count+1;
     }
     bool TestFdCount(int fd){
-        return fd_count_[fd].count!=0;
+        return fd_count_[fd].count!=0&&!fd_count_[fd].count_close;
     }
     bool FdCountDec(int fd){
         fd_count_[fd].count=fd_count_[fd].count-1;

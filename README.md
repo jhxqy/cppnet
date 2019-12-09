@@ -1,3 +1,10 @@
+# CppNet
+> 基于cppevent的网络库，支持TCP和UDP
+
+## 样例
+> UDP、TCP、及本地套接字监听。
+```cpp
+
 //
 //  socket_config.hpp
 //  cppnet
@@ -164,3 +171,6 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+
+
+```
