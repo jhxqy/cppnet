@@ -46,7 +46,7 @@ public:
     }
     ~SocketConfig(){
         if(ctx_->FdCountDec(fd_)){
-            std::cout<<fd_<<" close"<<std::endl;
+       //     std::cout<<fd_<<" close"<<std::endl;
             close(fd_);
         }
     }

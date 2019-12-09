@@ -160,7 +160,7 @@ public:
         event_number=0;
     }
     void Dispatch();
-    ~ Dispatcher();
+    ~Dispatcher();
 };
 #endif
 
@@ -205,7 +205,6 @@ public:
     }
     void Dispatch();
     ~Dispatcher();
-
 };
 #endif
 
