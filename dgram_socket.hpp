@@ -43,7 +43,7 @@ public:
     template<typename Buffer,typename Handler>
     void AsyncSendTo(const Buffer &buf,const address::EndPoint &ep ,Handler func){
         auto fd=NativeHandle();
-        std::cout<<"wait to send to "<<std::string(ep)<<std::endl;
+//        std::cout<<"wait to send to "<<std::string(ep)<<std::endl;
         GetContext().AddEvent(new async::EventBase(NativeHandle(), async::EventBaseType::write, [fd,buf,func,ep](int){
             error::IOError ec;
             address::EndPoint::SockAddrType sock=ep.GetSockAddr();

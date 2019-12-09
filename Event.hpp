@@ -29,8 +29,6 @@
 
 
 
-
-
 namespace cppnet{
 namespace async{
 enum class EventBaseType{
@@ -205,6 +203,7 @@ public:
     }
     void Dispatch();
     ~Dispatcher();
+
 };
 #endif
 
@@ -217,19 +216,18 @@ public:
 
 
 class IoContext{
-    
-    
     using TimeEventList=std::priority_queue<TimeEvent*,std::vector<TimeEvent*>,TimeEventCompartor>;
     std::list<EventBase*> io_list_;
 
     std::list<TimeEvent*> time_events_list_;
     Dispatcher dispatcher;
+            
+
     
 public:
     IoContext():dispatcher(io_list_,time_events_list_){
         
     }
-    
     void AddEvent(EventBase *e);
     void RemoveEvent(EventBase *e);
     void AddEvent(TimeEvent *e);

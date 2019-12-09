@@ -12,8 +12,7 @@
 #include <iostream>
 #include <memory>
 #include <utility>
-#include "stream_socket.hpp"
-#include "dgram_socket.hpp"
+#include "cppnet.hpp"
 using namespace std;
 using namespace cppnet;
 class session
@@ -71,6 +70,9 @@ public:
   server(async::SocketContext& io_context, short port)
     : acceptor_(io_context)
   {
+      acceptor_.ReUseAddr(true);
+      acceptor_.ReUsePort(true);
+
       acceptor_.Bind(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),port));
       acceptor_.Listen(5);
     do_accept();
@@ -124,8 +126,12 @@ public:
     UdpServer(async::SocketContext & io_context, short port)
             : socket_(io_context)
     {
-        socket_.Bind(address::EndPoint(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),8080)));
+        socket_.ReUseAddr(true);
+        socket_.ReUsePort(true);
+
+        socket_.Bind(address::EndPoint(address::EndPoint(address::IPAddress::Parse("127.0.0.1"),port)));
         do_receive();
+        
     }
 
     void do_receive()
@@ -167,7 +173,7 @@ private:
 int main(int argc, char* argv[])
 {
 //try{
-
+//
 //    async::SocketContext io_context;
 //    server s(io_context,8080);
 //    ExitService e(io_context,fileno(stdin));
@@ -189,8 +195,9 @@ int main(int argc, char* argv[])
     {
 
         async::SocketContext io_context;
-
-        UdpServer s(io_context,8080);
+        server s1(io_context, 8080);
+        ExitService e(io_context,fileno(stdin));
+        UdpServer s(io_context,8081);
 
         io_context.Run();
     }
