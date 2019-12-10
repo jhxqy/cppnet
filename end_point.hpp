@@ -88,6 +88,9 @@ public:
         res=res+std::string(buf)+":"+std::to_string(ntohs(sock_.sin_port));
         return res;
     }
+    std::string ToString()const{
+        return std::string(*this);
+    }
     
     
     

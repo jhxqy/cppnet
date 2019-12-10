@@ -9,7 +9,6 @@
 #ifndef io_context_hpp
 #define io_context_hpp
 #include <unistd.h>
-
 #include <stdio.h>
 #include "Event.hpp"
 #include <unordered_map>

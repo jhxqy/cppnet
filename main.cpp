@@ -70,6 +70,7 @@ private:
     void do_accept(){
         acceptor_.AsyncAccept([this](socket::TcpSocket socket,error::IOError ec){
             if (!ec){
+                cout<<socket.GetRemoteEndPoint().ToString()<< " connected!"<<endl;
                 std::make_shared<session>(socket)->start();
                 
             }

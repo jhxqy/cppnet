@@ -27,6 +27,7 @@ createException(IpAddressParser, NetException);
 createException(Bind, NetException);
 createException(Listen, NetException);
 createException(Accept, NetException);
+createException(GetLocalSocketName, NetException);
 
 }
 

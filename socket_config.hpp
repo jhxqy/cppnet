@@ -17,7 +17,7 @@
 #include <arpa/inet.h>
 #include "io_context.hpp"
 #include <iostream>
-
+#include "end_point.hpp"
 namespace cppnet {
 namespace socket{
 class Tcp{};
@@ -98,6 +98,9 @@ public:
     void NonBlock(bool);
     void SigDrive(bool);
     void SetOwn(int id);
+    address::EndPoint GetRemoteEndPoint();
+    address::EndPoint GetLocalEndPoint();
+
 private:
     NativeHandleType fd_;
 };
@@ -172,8 +175,31 @@ void SocketConfig<Protocol>::SigDrive(bool val){
     }
     fcntl(fd_, F_SETFL,flags);
 }
+template<typename Protocol>
+address::EndPoint SocketConfig<Protocol>::GetLocalEndPoint(){
+    sockaddr_in localaddr;
+    socklen_t addrlen=sizeof(localaddr);
 
+    if(getsockname(fd_,(sockaddr*)&localaddr,&addrlen)<0){
+        throw exception::GetLocalSocketNameException(strerror(errno));
+    }
+    address::EndPoint ep;
+    ep.SetSockAddr(localaddr);
+    return ep;
+}
 
+template<typename Protocol>
+address::EndPoint SocketConfig<Protocol>::GetRemoteEndPoint() {
+    sockaddr_in remoteaddr;
+    socklen_t addrlen=sizeof(remoteaddr);
+
+    if(getpeername(fd_,(sockaddr*)&remoteaddr,&addrlen)<0){
+        throw exception::GetLocalSocketNameException(strerror(errno));
+    }
+    address::EndPoint ep;
+    ep.SetSockAddr(remoteaddr);
+    return ep;
+}
 }
 }
 #endif /* socket_config_hpp */
